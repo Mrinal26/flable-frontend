@@ -1,98 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import React, { useState } from 'react';
+import styled from 'styled-components';
+import Sidebar from '../components/Sidebar'
 import ChatHistory from '../components/ChatHistory';
-import AdminInfo from '../components/AdminInfo';
-import ExportButton from '../components/ExportButton';
-import CopyButton from '../components/CopyButton';
-import FeedbackButtons from '../components/FeedbackButtons';
+import QuestionInput from '../components/QuestionInput';
+import AskButton from '../components/AskButton';
+
+const PageContainer = styled.div`
+  display: flex;
+  height: 100vh;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  padding: 20px;
+`;
 
 const ChatPage = () => {
   const [chatHistory, setChatHistory] = useState([]);
-  useEffect(() => {
-    const fetchChatHistory = async () => {
-      try {
-        const response = await fetch('/api/chat/history');
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch chat history');
-        }
-
-        const data = await response.json();
-        setChatHistory(data);
-      } catch (error) {
-        console.error('Error fetching chat history:', error);
-      }
-    };
-
-    fetchChatHistory();
-  }, []);
-
-  const handleExportPDF = async () => {
+  const handleAskQuestion = async (question) => {
     try {
-      const response = await fetch('/api/chat/export/pdf', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/pdf'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to export chat history to PDF');
-      }
-
-    } catch (error) {
-      console.error('Error exporting chat history to PDF:', error);
-    }
-  };
-
-  const handleCopyResponse = () => {
-    try {
-      const lastResponse = chatHistory[chatHistory.length - 1].answer;
-      navigator.clipboard.writeText(lastResponse)
-        .then(() => {
-          console.log('Response copied to clipboard:', lastResponse);
-        })
-        .catch(error => {
-          console.error('Error copying response to clipboard:', error);
-        });
-    } catch (error) {
-      console.error('Error copying response:', error);
-    }
-  };
-  
-  const handleFeedback = async (feedbackType) => {
-    try {
-      const response = await fetch('/api/feedback', {
+      const response = await fetch('/api/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ feedbackType })
+        body: JSON.stringify({ question })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit feedback');
+        throw new Error('Failed to ask question');
       }
 
-      console.log(`Feedback received: ${feedbackType}`);
+      const data = await response.json();
+      setChatHistory(prevChatHistory => [
+        ...prevChatHistory,
+        { question, response: data.answer }
+      ]);
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      console.error('Error asking question:', error);
     }
   };
 
   return (
-    <div className="chat-page">
+    <PageContainer>
       <Sidebar />
-      <div className="content">
-        <AdminInfo />
+      <MainContent>
         <ChatHistory chatHistory={chatHistory} />
-        <div className="chat-controls">
-          <ExportButton onClick={handleExportPDF} />
-          <CopyButton onClick={handleCopyResponse} />
-          <FeedbackButtons onFeedback={handleFeedback} />
-        </div>
-      </div>
-    </div>
+        <QuestionInput onAskQuestion={handleAskQuestion} />
+        <AskButton onClick={() => handleAskQuestion('Default question')} />
+      </MainContent>
+    </PageContainer>
   );
 };
 
